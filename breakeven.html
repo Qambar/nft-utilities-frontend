@@ -13,21 +13,42 @@
       <form>
         
         <div class="form-floating">
-          <label for="floatingInput">Purchase Price</label>
-          <input type="number" required step="any" class="form-control" id="floatingInput" placeholder="Purchase Price">
+          <label for="purchase-price-input">Purchase Price</label>
+          <input type="number" required step="any" class="form-control" id="purchase-price-input" placeholder="Purchase Price">
         </div>
         <div class="form-floating">
-          <label for="floatingPassword">Gas Price</label>
-          <input type="number" required step="any" class="form-control" id="floatingPassword" placeholder="Gas Price">
+          <label for="gas-price-input">Gas Price</label>
+          <input type="number" required step="any" class="form-control" id="gas-price-input" placeholder="Gas Price">
         </div>
         <div class="form-floating">
-          <label for="floatingPassword">Royalty %</label>
-          <input type="number" required step="any" class="form-control" id="floatingPassword" placeholder="Royalty %">
+          <label for="royalty-input">Royalty %</label>
+          <input type="number" required step="any" class="form-control" id="royalty-input" placeholder="Royalty %">
         </div>
         <button class="w-100 btn btn-lg btn-primary" type="submit">Calculate</button>
       </form>
     </main>
     
+    
+    <script>
+      /** Initialize MDC Web components. */
+
+      var resultEl = document.querySelector('.break-even-result');
+      
+      var form = document.querySelector('form');
+      form.addEventListener('submit', (event) => {
+        var purchasePriceInput = parseFloat(document.querySelector('#purchase-price-input').value);
+        var gasPriceInput = parseFloat(document.querySelector('#gas-price-input').value);
+        var royaltyInput = parseFloat(document.querySelector('#royalty-input').value);
+        var osFeeInput = 2.5;
+        var totalCost = purchasePriceInput + gasPriceInput;
+        var totalFees = royaltyInput + osFeeInput;
+        var breakEvenPrice = totalCost/((100-totalFees)/100)
+        alert(`Break even price: ${breakEvenPrice}`);
+        event.preventDefault();
+      });
+
+
+    </script>
     
         
       </body>
