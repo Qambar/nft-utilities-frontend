@@ -25,14 +25,13 @@
           <input type="number" required step="any" class="form-control" id="royalty-input" placeholder="Royalty %">
         </div>
         <button class="w-100 btn btn-lg btn-primary" type="submit">Calculate</button>
+        
+        <h4 id="result" class="invisible">Break-even price: <br />&nbsp;</h4>
       </form>
     </main>
     
     
     <script>
-      /** Initialize MDC Web components. */
-
-      var resultEl = document.querySelector('.break-even-result');
       
       var form = document.querySelector('form');
       form.addEventListener('submit', (event) => {
@@ -43,7 +42,9 @@
         var totalCost = purchasePriceInput + gasPriceInput;
         var totalFees = royaltyInput + osFeeInput;
         var breakEvenPrice = totalCost/((100-totalFees)/100)
-        alert(`Break even price: ${breakEvenPrice}`);
+        var resultEl = document.querySelector("#result");
+        resultEl.innerText = `Break even price: ${breakEvenPrice}`;
+        resultEl.removeAttribute("class");
         event.preventDefault();
       });
 
