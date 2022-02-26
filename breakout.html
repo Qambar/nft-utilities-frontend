@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Break out</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="bootstrap.min.css">
+  <script src="averagesbundle.js"></script>
+  <link href="breakout.css" rel="stylesheet">
+</head>
+
+<body>
+
+  <main class="container">
+
+    <div class="row g-5">
+      <h1 class="col-md-12 text-center" style="margin-top: 20px; margin-bottom: 50px;">NFT Breakouts</h1>
+      <div class="col-md-12" id="mainthing">
+
+        <template id="articletemplate">
+          <article class="blog-post">
+
+            <h2 class="blog-post-title">NFT Breakouts on January 1, 2021</h2>
+
+          </article>
+        </template>
+        <template id="itemtemplate">
+          <h4><em></em></h2>
+            <ul>
+              <li><strong>-day average</strong> num sales: </li>
+              <li><strong>-day</strong> average num sales: </li>
+              <li><strong>Increase</strong>: </li>
+            </ul>
+            <hr>
+        </template>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    const params = new Proxy(new URLSearchParams(window.location.search), {
+      get: (searchParams, prop) => searchParams.get(prop),
+    });
+    fetch("breakoutresults.json").then(function (response) {
+
+      return response.json()
+
+    }).then(function (js) {
+      var averages = window.breakout_averages;
+      var data = {};
+      var slugs = [];
+      for (var i = 0; i < js.length; i++) {
+        var item = js[i];
+        var { slug } = item;
+        if (!data[slug]) {
+          slugs.push(slug);
+          data[slug] = [];
+        }
+        data[slug].push({ slug, date: item.bucketStart, sales: item.quantity, short: 0, long: 0, signal: 0, position: 0 });
+      }
+      const breakouts = {};
+      for (var i = 0; i < slugs.length; i++) {
+        var dates = data[slugs[i]];
+        if (dates.length < params.long - 1) {
+          continue;
+        }
+        var sales = dates.map(d => d.sales);
+        //  console.log({ dates, sales });
+        //var fn = params.type === "ema" ? window.breakout_averages.ema : window.breakout_averages.sma;
+        var short = window.breakout_averages.sma(sales, params.short);
+        var long = window.breakout_averages.sma(sales, params.long);
+        var sss = [];
+        var lll = [];
+        for (var y = 0; y < dates.length; y++) {
+          if (y > short.length - 1) {
+            sss = [0, ...sss];
+          }
+          else {
+            sss.push(short[y]);
+          }
+          if (y > long.length - 1) {
+            lll = [0, ...lll];
+          }
+          else {
+            lll.push(long[y]);
+          }
+        }
+        short = sss;
+        long = lll;
+        for (var y = 0; y < dates.length; y++) {
+          var dt = dates[y];
+          dt.short = parseFloat(short[y]);
+          dt.long = parseFloat(long[y]);
+          dt.signal = dt.short > dt.long ? 1 : 0;
+          dt.prev = dates[y - 1];
+          if (dt.prev) {
+            dt.position = dt.signal - dt.prev.signal;
+            dt.increaseabsolute = dt.short - dt.long;
+            dt.increase = Math.round(((dt.short - dt.long) / dt.short) * 100);
+          }
+          else {
+            dt.position = 0;
+            dt.increase = 0;
+            dt.increaseabsolute = 0;
+          }
+          if (dt.long > 0 && dt.position == 1 && dt.increaseabsolute > 10) {
+
+            if (!breakouts[dt.date]) {
+              breakouts[dt.date] = [];
+            }
+            breakouts[dt.date].push(dt);
+          }
+        }
+        //console.log(dates[0].slug, dates);
+      }
+      window.breakouts = breakouts;
+      const days = Object.keys(breakouts).sort().reverse();
+      var articletemplate = document.querySelector('#articletemplate');
+      var itemtemplate = document.querySelector('#itemtemplate');
+      var mainthing = document.querySelector('#mainthing');
+      for (var i = 0; i < days.length; i++) {
+        var article = articletemplate.content.cloneNode(true);
+        var title = article.querySelector("h2");
+        var datestr = days[i];
+        title.textContent = "NFT Breakouts on " + new Date(datestr).toDateString();
+        var breakoutsforday = breakouts[datestr];
+        //console.log({ datestr, breakoutsforday });
+        for (var y = 0; y < breakoutsforday.length; y++) {
+          var itemdata = breakoutsforday[y];
+          var item = itemtemplate.content.cloneNode(true);
+          var em = item.querySelector("em");
+          var a = document.createElement("a");
+          a.setAttribute("href", `https://opensea.io/collection/${itemdata.slug}?tab=activity`);
+          a.innerText = itemdata.slug;
+          em.appendChild(a);
+
+          var li = item.querySelectorAll("li");
+          li[0].textContent = params.long + li[0].textContent + itemdata.long;
+          li[1].textContent = params.short + li[1].textContent + itemdata.short;
+          li[2].textContent += itemdata.increase + "%";
+
+          article.appendChild(item);
+        }
+
+        mainthing.appendChild(article);
+      }
+
+    }).catch(console.log);
+  </script>
+
+
+</body>
+
+</html>
