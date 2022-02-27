@@ -13,65 +13,65 @@
 <body>
 
   <main class="container">
-
     <div class="row g-5">
       <h1 class="col-md-12 text-center" style="margin-top: 20px; margin-bottom: 50px;">NFT Breakouts</h1>
-      <div class="col-md-12" id="mainthing">
-
-        <template id="articletemplate">
-          <article class="blog-post">
-
-            <h2 class="blog-post-title">NFT Breakouts on January 1, 2021</h2>
-
-          </article>
-        </template>
-        <template id="itemtemplate">
-          <h4><em></em></h2>
-            <ul>
-              <li><strong>-day average</strong> num sales: </li>
-              <li><strong>-day</strong> average num sales: </li>
-              <li><strong>Increase</strong>: </li>
-            </ul>
-            <hr>
-        </template>
+    </div>
+    <div class="row g-5 controls">
+      <div class="col-md-12">Short: <input type="range" value="5" min="1" max="60" id="short"
+          oninput="this.nextElementSibling.value = this.value">
+        <output>5</output>
       </div>
+      <div class="col-md-12">Long: <input type="range" value="15" min="1" max="60" id="long"
+          oninput="this.nextElementSibling.value = this.value">
+        <output>15</output>
+      </div>
+      <div class="col-md-12">
+        <button type="button" class="btn btn-primary" id="recalculate">Recalculate</button>
+      </div>
+    </div>
+
+    <template id="articletemplate">
+      <article class="blog-post">
+
+        <h2 class="blog-post-title">NFT Breakouts on January 1, 2021</h2>
+
+      </article>
+    </template>
+    <template id="itemtemplate">
+      <h4><em></em></h2>
+        <ul>
+          <li><strong>-day average</strong> num sales: </li>
+          <li><strong>-day</strong> average num sales: </li>
+          <li><strong>Increase</strong>: </li>
+        </ul>
+        <hr>
+    </template>
+    </div>
+    <div class="col-md-12" id="mainthing">
+
 
     </div>
 
   </main>
 
   <script>
-    const params = new Proxy(new URLSearchParams(window.location.search), {
-      get: (searchParams, prop) => searchParams.get(prop),
-    });
-    fetch("breakoutresults.json").then(function (response) {
 
-      return response.json()
+    function calculate(data, slugs) {
 
-    }).then(function (js) {
-      var averages = window.breakout_averages;
-      var data = {};
-      var slugs = [];
-      for (var i = 0; i < js.length; i++) {
-        var item = js[i];
-        var { slug } = item;
-        if (!data[slug]) {
-          slugs.push(slug);
-          data[slug] = [];
-        }
-        data[slug].push({ slug, date: item.bucketStart, sales: item.quantity, short: 0, long: 0, signal: 0, position: 0 });
-      }
+      const short_window = parseInt(document.querySelector('#short').value);
+      const long_window = parseInt(document.querySelector('#long').value);
+
       const breakouts = {};
       for (var i = 0; i < slugs.length; i++) {
         var dates = data[slugs[i]];
-        if (dates.length < params.long - 1) {
+        if (dates.length < long_window - 1) {
           continue;
         }
         var sales = dates.map(d => d.sales);
         //  console.log({ dates, sales });
         //var fn = params.type === "ema" ? window.breakout_averages.ema : window.breakout_averages.sma;
-        var short = window.breakout_averages.sma(sales, params.short);
-        var long = window.breakout_averages.sma(sales, params.long);
+        var short = window.breakout_averages.sma(sales, short_window);
+        var long = window.breakout_averages.sma(sales, long_window);
         var sss = [];
         var lll = [];
         for (var y = 0; y < dates.length; y++) {
@@ -90,12 +90,16 @@
         }
         short = sss;
         long = lll;
+        // need 2 iterations - populate then compare
         for (var y = 0; y < dates.length; y++) {
           var dt = dates[y];
           dt.short = parseFloat(short[y]);
           dt.long = parseFloat(long[y]);
-          dt.signal = dt.short > dt.long ? 1 : 0;
+          dt.signal = y >= long_window - 1 && dt.short > dt.long ? 1 : 0;
           dt.prev = dates[y - 1];
+        }
+        for (var y = 0; y < dates.length; y++) {
+          var dt = dates[y];
           if (dt.prev) {
             dt.position = dt.signal - dt.prev.signal;
             dt.increaseabsolute = dt.short - dt.long;
@@ -106,7 +110,7 @@
             dt.increase = 0;
             dt.increaseabsolute = 0;
           }
-          if (dt.long > 0 && dt.position == 1 && dt.increaseabsolute > 10) {
+          if (dt.position == 1 && dt.increaseabsolute > 10) {
 
             if (!breakouts[dt.date]) {
               breakouts[dt.date] = [];
@@ -117,10 +121,12 @@
         //console.log(dates[0].slug, dates);
       }
       window.breakouts = breakouts;
+      window.computed = data;
       const days = Object.keys(breakouts).sort().reverse();
       var articletemplate = document.querySelector('#articletemplate');
       var itemtemplate = document.querySelector('#itemtemplate');
       var mainthing = document.querySelector('#mainthing');
+      mainthing.innerHTML = "";
       for (var i = 0; i < days.length; i++) {
         var article = articletemplate.content.cloneNode(true);
         var title = article.querySelector("h2");
@@ -138,8 +144,8 @@
           em.appendChild(a);
 
           var li = item.querySelectorAll("li");
-          li[0].textContent = params.long + li[0].textContent + itemdata.long;
-          li[1].textContent = params.short + li[1].textContent + itemdata.short;
+          li[0].textContent = long_window + li[0].textContent + itemdata.long;
+          li[1].textContent = short_window + li[1].textContent + itemdata.short;
           li[2].textContent += itemdata.increase + "%";
 
           article.appendChild(item);
@@ -147,6 +153,32 @@
 
         mainthing.appendChild(article);
       }
+    }
+
+
+    fetch("breakoutresults.json").then(function (response) {
+
+      return response.json()
+
+    }).then(function (js) {
+      var today = new Date();
+      js = js.filter(d => d.bucketStart.substr(0, 10) != "2022-02-26");
+      var averages = window.breakout_averages;
+      var data = {};
+      var slugs = [];
+      for (var i = 0; i < js.length; i++) {
+        var item = js[i];
+        var { slug } = item;
+        if (!data[slug]) {
+          slugs.push(slug);
+          data[slug] = [];
+        }
+        data[slug].push({ slug, date: item.bucketStart, sales: item.quantity, short: 0, long: 0, signal: 0, position: 0 });
+      }
+
+      calculate(data, slugs);
+      document.querySelector("#recalculate").addEventListener("click", () => calculate(data, slugs));
+
 
     }).catch(console.log);
   </script>
