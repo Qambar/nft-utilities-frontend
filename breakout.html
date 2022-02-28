@@ -172,8 +172,8 @@
         // need 2 iterations - populate then compare
         for (var y = 0; y < dates.length; y++) {
           var dt = dates[y];
-          dt.short = parseFloat(short[y]).toFixed(2);
-          dt.long = parseFloat(long[y]).toFixed(2);
+          dt.short = short[y];
+          dt.long = long[y];
           dt.signal = y >= long_window - 1 && dt.short > dt.long ? 1 : 0;
           dt.prev = dates[y - 1];
         }
