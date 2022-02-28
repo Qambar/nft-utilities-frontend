@@ -11,6 +11,9 @@
     integrity="sha512-QSkVNOCYLtj73J4hbmVoOV6KVZuMluZlioC+trLpewV8qMjsWqlIQvkn1KGX2StWvPMdWGBqim1xlC8krl1EKQ=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <link href="breakout.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -35,21 +38,61 @@
 
     <template id="articletemplate">
       <article class="blog-post">
-
-        <h2 class="blog-post-title">NFT Breakouts on January 1, 2021</h2>
-
+        <div class="row g-5">
+          <h2 class="blog-post-title"></h2>
+        </div>
       </article>
     </template>
-    <template id="itemtemplate">
-      <h4><em></em></h2>
-        <ul>
-          <li><strong>-day average</strong> num sales: </li>
-          <li><strong>-day</strong> average num sales: </li>
-          <li><strong>Increase</strong>: </li>
-        </ul>
-        <hr>
+    <template id="breakout-headingtemplate">
+      <div class="row g-5">
+        <h3 class="col-12 text-center"></h3>
+      </div>
+
     </template>
-    </div>
+    <template id="breakout-charttemplate">
+      <div class="row g-5">
+        <div class="col">
+        </div>
+        <div class="col-8">
+          <canvas></canvas>
+        </div>
+        <div class="col">
+        </div>
+      </div>
+    </template>
+    <template id="breakout-tabletemplate">
+      <div class="row g-5">
+        <div class="col">
+        </div>
+        <div class="col-6">
+          <table class="table">
+            <tbody>
+              <tr>
+                <th scope="row">-day average:</th>
+                <td>20</td>
+              </tr>
+              <tr>
+                <th scope="row">-day average:</th>
+                <td>20</td>
+              </tr>
+              <tr>
+                <th scope="row">Increase:</th>
+                <td>20%</td>
+              </tr>
+              <tr>
+                <th scope="row">Link:</th>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="col">
+        </div>
+      </div>
+
+    </template>
+
     <div class="col-md-12" id="mainthing">
 
 
@@ -127,37 +170,115 @@
       window.computed = data;
       const days = Object.keys(breakouts).sort().reverse();
       var articletemplate = document.querySelector('#articletemplate');
-      var itemtemplate = document.querySelector('#itemtemplate');
+      var headingtemplate = document.querySelector('#breakout-headingtemplate');
+      var charttemplate = document.querySelector('#breakout-charttemplate');
+      var tabletemplate = document.querySelector('#breakout-tabletemplate');
       var mainthing = document.querySelector('#mainthing');
       mainthing.innerHTML = "";
       for (var i = 0; i < days.length; i++) {
-        var article = articletemplate.content.cloneNode(true);
+
+        var article = articletemplate.content.cloneNode(true).querySelector("article");
         var title = article.querySelector("h2");
         var datestr = days[i];
         title.textContent = "NFT Breakouts on " + new Date(datestr).toDateString();
         var breakoutsforday = breakouts[datestr];
-        //console.log({ datestr, breakoutsforday });
+
         for (var y = 0; y < breakoutsforday.length; y++) {
+
           var itemdata = breakoutsforday[y];
-          var item = itemtemplate.content.cloneNode(true);
-          var em = item.querySelector("em");
+          var heading = headingtemplate.content.cloneNode(true);
+          var h3 = heading.querySelector("h3");
+          h3.innerText = itemdata.slug;
+          article.appendChild(heading);
+
+          if (i < 5) {
+
+            var chart = charttemplate.content.cloneNode(true);
+            var canvas = chart.querySelector('canvas');
+            configureChart(canvas, itemdata, data[itemdata.slug], short_window, long_window);
+            article.appendChild(chart);
+
+          }
+
+          var table = tabletemplate.content.cloneNode(true);
+
+          var td = table.querySelectorAll("th");
+          td[0].textContent = long_window + td[0].textContent;
+          td[1].textContent = short_window + td[1].textContent;
+
+          var td = table.querySelectorAll("td");
+          td[0].textContent = itemdata.long;
+          td[1].textContent = itemdata.short;
+          td[2].textContent = itemdata.increase + "%";
+
           var a = document.createElement("a");
-          a.setAttribute("href", `https://opensea.io/collection/${itemdata.slug}?tab=activity`);
-          a.innerText = itemdata.slug;
-          em.appendChild(a);
+          var url = `https://opensea.io/collection/${itemdata.slug}?tab=activity`;
+          a.setAttribute("href", url);
+          a.innerText = url
+          td[3].appendChild(a);
 
-          var li = item.querySelectorAll("li");
-          li[0].textContent = long_window + li[0].textContent + itemdata.long;
-          li[1].textContent = short_window + li[1].textContent + itemdata.short;
-          li[2].textContent += itemdata.increase + "%";
-
-          article.appendChild(item);
+          article.appendChild(table);
         }
 
         mainthing.appendChild(article);
       }
     }
 
+    function configureChart(canvas, breakout, collectionData, short_window, long_window) {
+
+      var source_data = collectionData.filter(d => d.date <= breakout.date);
+      var short_moving_averages = source_data.map(d => d.short);
+      var long_moving_averages = source_data.map(d => d.long);
+      var daily_total_sales = source_data.map(d => d.sales);
+      var labels = source_data.map(d => d.date.substr(5, 5));
+
+      const chart_data = {
+        datasets: [
+          {
+            type: 'line',
+            label: short_window + '-day SMA',
+            backgroundColor: '#ffcd56',
+            borderColor: '#ffcd56',
+            data: short_moving_averages,
+          }, {
+            type: 'line',
+            label: long_window + '-day SMA',
+            backgroundColor: '#36a2eb',
+            borderColor: '#36a2eb',
+            data: long_moving_averages,
+          }, {
+            type: 'bar',
+            label: 'Total sales',
+            backgroundColor: 'rgb(255, 99, 132)',
+            borderColor: 'rgb(255, 99, 132)',
+            data: daily_total_sales,
+          }],
+        labels
+      };
+
+      const chart_config = {
+        data: chart_data,
+        options: {
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Date'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Sales'
+              }
+            }
+          }
+        }
+      };
+
+      const myChart = new Chart(canvas, chart_config);
+
+    }
 
     fetch("breakoutresults.json").then(function (response) {
 
