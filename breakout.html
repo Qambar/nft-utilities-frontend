@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="bootstrap.min.css">
-  <script src="averagesbundle.js"></script>
+  <script src="gauss.min.js" type="text/javascript"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"
     integrity="sha512-QSkVNOCYLtj73J4hbmVoOV6KVZuMluZlioC+trLpewV8qMjsWqlIQvkn1KGX2StWvPMdWGBqim1xlC8krl1EKQ=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -22,15 +22,40 @@
     <div class="row g-5">
       <h1 class="col-md-12 text-center" style="margin-top: 20px; margin-bottom: 50px;">NFT Breakouts</h1>
     </div>
-    <div class="row g-5 controls">
+    <div class="row g-5">
       <div class="col-md-12">Short: <input type="range" value="5" min="1" max="60" id="short"
           oninput="this.nextElementSibling.value = this.value">
         <output>5</output>
       </div>
+    </div>
+    <div class="row g-5">
       <div class="col-md-12">Long: <input type="range" value="15" min="1" max="60" id="long"
           oninput="this.nextElementSibling.value = this.value">
         <output>15</output>
       </div>
+    </div>
+    <div class="row g-5">
+      <div class="col-md-12">
+        <div class="form-check">
+          <input class="form-check-input" type="radio" value="sma" name="flexRadioDefault" id="flexRadioDefault1"
+            checked>
+          <label class="form-check-label" for="flexRadioDefault1">
+            SMA
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="row g-5">
+      <div class="col-md-12">
+        <div class="form-check">
+          <input class="form-check-input" type="radio" value="ema" name="flexRadioDefault" id="flexRadioDefault2">
+          <label class="form-check-label" for="flexRadioDefault2">
+            EMA
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="row g-5">
       <div class="col-md-12">
         <button type="button" class="btn btn-primary" id="recalculate">Recalculate</button>
       </div>
@@ -64,27 +89,28 @@
       <div class="row g-5">
         <div class="col">
         </div>
-        <div class="col-6">
+        <div class="col-8">
           <table class="table">
             <tbody>
               <tr>
-                <th scope="row">-day average:</th>
-                <td>20</td>
+                <th scope="row text-end"></th>
+                <td></td>
               </tr>
               <tr>
-                <th scope="row">-day average:</th>
-                <td>20</td>
+                <th scope="row text-end"></th>
+                <td></td>
               </tr>
               <tr>
-                <th scope="row">Increase:</th>
-                <td>20%</td>
+                <th scope="row text-end"></th>
+                <td></td>
               </tr>
               <tr>
-                <th scope="row">Link:</th>
+                <th scope="row text-end"></th>
                 <td></td>
               </tr>
             </tbody>
           </table>
+
         </div>
 
         <div class="col">
@@ -107,17 +133,24 @@
       const short_window = parseInt(document.querySelector('#short').value);
       const long_window = parseInt(document.querySelector('#long').value);
 
+      const average_type = document.querySelector('input[name="flexRadioDefault"]:checked').value;
+
+      const average_type_desc = average_type.toUpperCase();
+
       const breakouts = {};
+
       for (var i = 0; i < slugs.length; i++) {
+
         var dates = data[slugs[i]];
+
         if (dates.length < long_window - 1) {
           continue;
         }
-        var sales = dates.map(d => d.sales);
-        //  console.log({ dates, sales });
-        //var fn = params.type === "ema" ? window.breakout_averages.ema : window.breakout_averages.sma;
-        var short = window.breakout_averages.sma(sales, short_window);
-        var long = window.breakout_averages.sma(sales, long_window);
+
+        var sales = new gauss.Vector(dates.map(d => d.sales));
+
+        var short = sales[average_type](short_window);
+        var long = sales[average_type](long_window);
         var sss = [];
         var lll = [];
         for (var y = 0; y < dates.length; y++) {
@@ -139,8 +172,8 @@
         // need 2 iterations - populate then compare
         for (var y = 0; y < dates.length; y++) {
           var dt = dates[y];
-          dt.short = parseFloat(short[y]);
-          dt.long = parseFloat(long[y]);
+          dt.short = parseFloat(short[y]).toFixed(2);
+          dt.long = parseFloat(long[y]).toFixed(2);
           dt.signal = y >= long_window - 1 && dt.short > dt.long ? 1 : 0;
           dt.prev = dates[y - 1];
         }
@@ -195,7 +228,7 @@
 
             var chart = charttemplate.content.cloneNode(true);
             var canvas = chart.querySelector('canvas');
-            configureChart(canvas, itemdata, data[itemdata.slug], short_window, long_window);
+            configureChart(canvas, itemdata, data[itemdata.slug], short_window, long_window, average_type_desc);
             article.appendChild(chart);
 
           }
@@ -203,8 +236,10 @@
           var table = tabletemplate.content.cloneNode(true);
 
           var td = table.querySelectorAll("th");
-          td[0].textContent = long_window + td[0].textContent;
-          td[1].textContent = short_window + td[1].textContent;
+          td[0].textContent = long_window + " day " + average_type_desc;
+          td[1].textContent = short_window + " day " + average_type_desc;
+          td[2].textContent = "Increase";
+          td[3].textContent = "Link";
 
           var td = table.querySelectorAll("td");
           td[0].textContent = itemdata.long;
@@ -222,9 +257,10 @@
 
         mainthing.appendChild(article);
       }
+
     }
 
-    function configureChart(canvas, breakout, collectionData, short_window, long_window) {
+    function configureChart(canvas, breakout, collectionData, short_window, long_window, average_type_desc) {
 
       var source_data = collectionData.filter(d => d.date <= breakout.date);
       var short_moving_averages = source_data.map(d => d.short);
@@ -236,13 +272,13 @@
         datasets: [
           {
             type: 'line',
-            label: short_window + '-day SMA',
+            label: short_window + '-day ' + average_type_desc,
             backgroundColor: '#ffcd56',
             borderColor: '#ffcd56',
             data: short_moving_averages,
           }, {
             type: 'line',
-            label: long_window + '-day SMA',
+            label: long_window + '-day ' + average_type_desc,
             backgroundColor: '#36a2eb',
             borderColor: '#36a2eb',
             data: long_moving_averages,
@@ -285,6 +321,7 @@
       return response.json()
 
     }).then(function (js) {
+
       var today = new Date();
       js = js.filter(d => d.bucketStart.substr(0, 10) != "2022-02-26");
       var averages = window.breakout_averages;

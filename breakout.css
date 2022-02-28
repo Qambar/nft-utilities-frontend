@@ -2,10 +2,6 @@ body {
   font-family: 'Roboto', sans-serif;
   font-weight: 400;
 }
-.controls div {
-  padding: 30px;
-}
-
 h1 {
   font-weight: 900;
 }
@@ -15,6 +11,10 @@ h2 {
 }
 
 h3 {
-  font-weight: 500;
-  margin: 30px;
+  margin-top: 40px;
+}
+
+.row {
+  margin-top: 15px;
+  margin-bottom: 15px;
 }
