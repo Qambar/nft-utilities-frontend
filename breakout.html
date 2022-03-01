@@ -277,15 +277,21 @@
         // need 2 iterations - populate then compare
         for (var y = 0; y < dates.length; y++) {
           var dt = dates[y];
+          dt.idx = y;
           dt.short = short[y];
           dt.long = long[y];
-          dt.signal = y >= long_window - 1 && dt.short > dt.long ? 1 : 0;
+          if (y >= long_window - 1) {
+            dt.signal = dt.short > dt.long ? 1 : 0;
+          }
+          else {
+            dt.signal = null;
+          }
           dt.prev = dates[y - 1];
         }
         for (var y = 0; y < dates.length; y++) {
           var dt = dates[y];
           if (dt.prev) {
-            dt.position = dt.signal - dt.prev.signal;
+            dt.position = dt.prev.signal == null ? 0 : dt.signal - dt.prev.signal;
             dt.increaseabsolute = dt.short - dt.long;
             dt.increase = Math.round(((dt.short - dt.long) / dt.short) * 100);
           }
