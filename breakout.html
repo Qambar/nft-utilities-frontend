@@ -119,6 +119,30 @@
 
     </template>
 
+    <template id="tableview-template">
+      <div class="row g-5">
+        <div class="col">
+        </div>
+        <div class="col-8">
+          <table class="table">
+            <thead>
+              <th>Date</th>
+              <th>Collection</th>
+            </thead>
+            <tbody>
+
+            </tbody>
+          </table>
+
+        </div>
+
+        <div class="col">
+        </div>
+      </div>
+
+    </template>
+
+
     <div class="col-md-12" id="mainthing">
 
 
@@ -127,6 +151,87 @@
   </main>
 
   <script>
+
+    function buildScreen(data, breakout_days_sorted, breakouts, short_window, long_window, average_type_desc) {
+
+      const days = breakout_days_sorted;
+
+      var articletemplate = document.querySelector('#articletemplate');
+      var headingtemplate = document.querySelector('#breakout-headingtemplate');
+      var charttemplate = document.querySelector('#breakout-charttemplate');
+      var tabletemplate = document.querySelector('#breakout-tabletemplate');
+      var mainthing = document.querySelector('#mainthing');
+      mainthing.innerHTML = "";
+      for (var i = 0; i < days.length; i++) {
+
+        var article = articletemplate.content.cloneNode(true).querySelector("article");
+        var title = article.querySelector("h2");
+        var datestr = days[i];
+        title.textContent = "NFT Breakouts on " + new Date(datestr).toDateString();
+        var breakoutsforday = breakouts[datestr];
+
+        for (var y = 0; y < breakoutsforday.length; y++) {
+
+          var itemdata = breakoutsforday[y];
+          var heading = headingtemplate.content.cloneNode(true);
+          var h3 = heading.querySelector("h3");
+          h3.innerText = itemdata.slug;
+          article.appendChild(heading);
+
+          if (i < 5) {
+
+            var chart = charttemplate.content.cloneNode(true);
+            var canvas = chart.querySelector('canvas');
+            configureChart(canvas, itemdata, data[itemdata.slug], short_window, long_window, average_type_desc);
+            article.appendChild(chart);
+
+          }
+
+          var table = tabletemplate.content.cloneNode(true);
+
+          var td = table.querySelectorAll("th");
+          td[0].textContent = long_window + " day " + average_type_desc;
+          td[1].textContent = short_window + " day " + average_type_desc;
+          td[2].textContent = "Increase";
+          td[3].textContent = "Link";
+
+          var td = table.querySelectorAll("td");
+          td[0].textContent = itemdata.long;
+          td[1].textContent = itemdata.short;
+          td[2].textContent = itemdata.increase + "%";
+
+          var a = document.createElement("a");
+          var url = `https://opensea.io/collection/${itemdata.slug}?tab=activity`;
+          a.setAttribute("href", url);
+          a.innerText = url
+          td[3].appendChild(a);
+
+          article.appendChild(table);
+        }
+
+        mainthing.appendChild(article);
+      }
+
+    }
+
+    function buildCompactView(data) {
+
+      const row = `<tr>
+        <td>DATE</td>
+        <td><a href="https://opensea.io/collection/SLUG?tab=activity">SLUG</a></td>
+      </tr>`;
+
+      var tabletemplate = document.querySelector('#tableview-template');
+      var mainthing = document.querySelector('#mainthing');
+      mainthing.innerHTML = "";
+
+      var table = tabletemplate.content.cloneNode(true);
+      var tbody = table.querySelector('tbody');
+      var rows = data.map(d => row.replaceAll("DATE", d[0]).replaceAll("SLUG", d[1])).join("");
+      tbody.innerHTML = rows;
+      mainthing.appendChild(table);
+
+    }
 
     function calculate(data, slugs) {
 
@@ -197,66 +302,22 @@
             breakouts[dt.date].push(dt);
           }
         }
-        //console.log(dates[0].slug, dates);
       }
+
       window.breakouts = breakouts;
       window.computed = data;
+
       const days = Object.keys(breakouts).sort().reverse();
-      var articletemplate = document.querySelector('#articletemplate');
-      var headingtemplate = document.querySelector('#breakout-headingtemplate');
-      var charttemplate = document.querySelector('#breakout-charttemplate');
-      var tabletemplate = document.querySelector('#breakout-tabletemplate');
-      var mainthing = document.querySelector('#mainthing');
-      mainthing.innerHTML = "";
-      for (var i = 0; i < days.length; i++) {
+      const breakouts_array = days.flatMap(d => breakouts[d]);
+      window.breakouts_array = breakouts_array;
 
-        var article = articletemplate.content.cloneNode(true).querySelector("article");
-        var title = article.querySelector("h2");
-        var datestr = days[i];
-        title.textContent = "NFT Breakouts on " + new Date(datestr).toDateString();
-        var breakoutsforday = breakouts[datestr];
-
-        for (var y = 0; y < breakoutsforday.length; y++) {
-
-          var itemdata = breakoutsforday[y];
-          var heading = headingtemplate.content.cloneNode(true);
-          var h3 = heading.querySelector("h3");
-          h3.innerText = itemdata.slug;
-          article.appendChild(heading);
-
-          if (i < 5) {
-
-            var chart = charttemplate.content.cloneNode(true);
-            var canvas = chart.querySelector('canvas');
-            configureChart(canvas, itemdata, data[itemdata.slug], short_window, long_window, average_type_desc);
-            article.appendChild(chart);
-
-          }
-
-          var table = tabletemplate.content.cloneNode(true);
-
-          var td = table.querySelectorAll("th");
-          td[0].textContent = long_window + " day " + average_type_desc;
-          td[1].textContent = short_window + " day " + average_type_desc;
-          td[2].textContent = "Increase";
-          td[3].textContent = "Link";
-
-          var td = table.querySelectorAll("td");
-          td[0].textContent = itemdata.long;
-          td[1].textContent = itemdata.short;
-          td[2].textContent = itemdata.increase + "%";
-
-          var a = document.createElement("a");
-          var url = `https://opensea.io/collection/${itemdata.slug}?tab=activity`;
-          a.setAttribute("href", url);
-          a.innerText = url
-          td[3].appendChild(a);
-
-          article.appendChild(table);
-        }
-
-        mainthing.appendChild(article);
+      if (window.location.toString().indexOf('compact') > -1) {
+        buildCompactView(breakouts_array.map(b => [b.date.substr(0, 10), b.slug]));
       }
+      else {
+        buildScreen(data, days, breakouts, short_window, long_window, average_type_desc);
+      }
+
 
     }
 
